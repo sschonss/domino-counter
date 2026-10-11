@@ -129,6 +129,32 @@ canvas {
   cursor: crosshair;
 }
 
+.live-wrap { position: relative; }
+
+.live-wrap video {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Overlay com a mesma proporção do vídeo, exatamente por cima dele. */
+.live-wrap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.status {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff4d6;
+  color: #6b4b00;
+  font-size: 0.95rem;
+}
+
 .hint {
   font-size: 0.85rem;
   color: var(--muted);
@@ -152,6 +178,34 @@ canvas {
   align-items: center;
   gap: 8px;
 }
+
+select {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+}
+
+.tiles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip.muted { color: var(--muted); }
 
 input[type="range"] { width: 100%; accent-color: var(--green); }
 input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--green); }

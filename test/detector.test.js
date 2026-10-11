@@ -158,3 +158,31 @@ test('pips encostados (ligados por sombra) são separados', () => {
   for (const x of [330, 380, 430]) fillCircle(img, x, 250, 17, [20, 20, 20]);
   assert.strictEqual(detectPips(img.data, img.width, img.height).count, 6);
 });
+
+test('identifica cada peça e o valor de cada metade', () => {
+  const tiles = [[6, 3], [1, 5], [4, 4], [0, 2]];
+  const img = makeImage(800, 500, [40, 110, 60]);
+  tiles.forEach(([a, b], i) => {
+    const x = 60 + i * 180, y = 80, size = 80;
+    drawTile(img, x, y, size, a, b, [245, 245, 240], [20, 20, 20]);
+    fillRect(img, x + size * 0.1, y + size - 2, size * 0.8, 4, [30, 30, 30]); // divisória escura
+  });
+  addNoise(img, 15, 7);
+  const r = detectPips(img.data, img.width, img.height, { maxPerHalf: 6 });
+  const found = r.tiles.slice().sort((p, q) => p.x - q.x).map((t) => t.values);
+  assert.deepStrictEqual(found, tiles);
+  assert.strictEqual(r.count, sum(tiles));
+});
+
+test('metade não passa do máximo do tipo de dominó', () => {
+  const img = makeImage(400, 400, [40, 110, 60]);
+  const x = 150, y = 60, size = 100;
+  fillRect(img, x, y, size, size * 2, [245, 245, 240]);
+  fillRect(img, x + 10, y + size - 2, size * 0.8, 4, [30, 30, 30]);
+  // 9 pips (3×3) na metade de cima, 2 na de baixo.
+  for (const fx of [0.2, 0.5, 0.8]) for (const fy of [0.2, 0.5, 0.8]) fillCircle(img, x + fx * size, y + fy * size, 8, [20, 20, 20]);
+  fillCircle(img, x + 25, y + size + 25, 8, [20, 20, 20]);
+  fillCircle(img, x + 75, y + size + 75, 8, [20, 20, 20]);
+  assert.deepStrictEqual(detectPips(img.data, img.width, img.height, { maxPerHalf: 9 }).tiles[0].values, [9, 2]);
+  assert.deepStrictEqual(detectPips(img.data, img.width, img.height, { maxPerHalf: 6 }).tiles[0].values, [6, 2]);
+});

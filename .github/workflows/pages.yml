@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: 22
       - run: npm test
-      - run: mkdir _site && cp index.html app.js detector.js style.css icon.svg manifest.webmanifest _site/ && touch _site/.nojekyll
+      - run: mkdir _site && cp index.html app.js detector.js style.css icon.svg *.png manifest.webmanifest _site/ && touch _site/.nojekyll
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
