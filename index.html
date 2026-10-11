@@ -17,14 +17,30 @@
 
   <main>
     <section class="actions">
-      <label class="btn primary">
-        📷 Tirar foto
+      <button id="liveStart" class="btn primary live-btn">🎥 Câmera ao vivo</button>
+      <label class="btn">
+        📷 Foto
         <input id="camera" type="file" accept="image/*" capture="environment" hidden>
       </label>
       <label class="btn">
         🖼️ Galeria
         <input id="gallery" type="file" accept="image/*" hidden>
       </label>
+    </section>
+
+    <section id="live" class="result" hidden>
+      <div class="total">
+        <span id="liveTotal">0</span>
+        <small>pontos (ao vivo)</small>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="liveCanvas"></canvas>
+      </div>
+      <p class="hint">Mire nas peças de cima. Quando o número estabilizar, congele para conferir e corrigir.</p>
+      <div class="row">
+        <button id="liveFreeze" class="btn primary">📸 Congelar</button>
+        <button id="liveStop" class="btn">✕ Parar</button>
+      </div>
     </section>
 
     <section id="result" class="result" hidden>
@@ -38,6 +54,10 @@
       </div>
       <p class="hint">Toque num ponto marcado para remover, ou num ponto esquecido para adicionar.</p>
 
+      <button id="save" class="btn primary wide">➕ Somar ao placar</button>
+    </section>
+
+    <section id="settings" class="result" hidden>
       <div class="controls">
         <label>
           Sensibilidade
@@ -48,12 +68,10 @@
           Pontos claros em peça escura
         </label>
       </div>
-
-      <button id="save" class="btn primary wide">➕ Somar ao placar</button>
     </section>
 
     <section id="empty" class="empty">
-      <p>Fotografe suas peças de cima, bem iluminadas e sem se sobreporem. O app conta os pontos automaticamente.</p>
+      <p>Use a câmera ao vivo ou fotografe as peças de cima, bem iluminadas e sem se sobreporem. O app conta os pontos automaticamente.</p>
     </section>
 
     <section class="score">
