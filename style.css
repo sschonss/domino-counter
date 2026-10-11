@@ -129,6 +129,32 @@ canvas {
   cursor: crosshair;
 }
 
+.live-wrap { position: relative; }
+
+.live-wrap video {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Overlay com a mesma proporção do vídeo, exatamente por cima dele. */
+.live-wrap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.status {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff4d6;
+  color: #6b4b00;
+  font-size: 0.95rem;
+}
+
 .hint {
   font-size: 0.85rem;
   color: var(--muted);

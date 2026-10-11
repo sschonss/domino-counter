@@ -2,7 +2,7 @@
   'use strict';
 
   const MAX_SIDE = 1200; // reduz fotos grandes para a detecção ficar rápida
-  const LIVE_MAX_SIDE = 960; // menor no ao vivo, para vários quadros por segundo
+  const LIVE_MAX_SIDE = 720; // menor no ao vivo, para vários quadros por segundo
   const STORAGE_KEY = 'domino-counter-history';
 
   const $ = (id) => document.getElementById(id);
@@ -113,45 +113,78 @@
   }
 
   // --- Câmera ao vivo ---------------------------------------------------
+  //
+  // O <video> fica visível na página (o Safari do iPhone não atualiza quadros
+  // de um vídeo fora da página) e os círculos são desenhados num canvas
+  // transparente por cima dele. A detecção roda num canvas à parte, em
+  // resolução menor, sem travar a imagem da câmera.
 
-  const video = document.createElement('video');
-  video.setAttribute('playsinline', '');
-  video.muted = true;
-  const liveCanvas = $('liveCanvas');
-  const liveCtx = liveCanvas.getContext('2d', { willReadFrequently: true });
+  const video = $('liveVideo');
+  const overlay = $('liveOverlay');
+  const overlayCtx = overlay.getContext('2d');
+  const work = document.createElement('canvas');
+  const workCtx = work.getContext('2d', { willReadFrequently: true });
   let stream = null;
   let recentCounts = [];
 
+  function liveStatus(text) {
+    $('liveStatus').textContent = text || '';
+    $('liveStatus').hidden = !text;
+  }
+
+  function cameraErrorMessage(e) {
+    const name = e && e.name;
+    if (name === 'NotAllowedError' || name === 'SecurityError') {
+      return 'Sem permissão para usar a câmera. No iPhone: Ajustes → Safari → Câmera → Permitir. ' +
+        'Se abriu o link dentro de outro app, abra no Safari.';
+    }
+    if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+      return 'Nenhuma câmera encontrada neste aparelho.';
+    }
+    if (name === 'NotReadableError') {
+      return 'A câmera está em uso por outro app. Feche-o e tente de novo.';
+    }
+    return 'Não foi possível abrir a câmera (' + (name || e) + '). Use o botão "Foto".';
+  }
+
   async function startLive() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert('Este navegador não permite câmera ao vivo. Use o botão "Foto".');
-      return;
-    }
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false,
-      });
-    } catch (e) {
-      alert('Não foi possível abrir a câmera. Verifique a permissão de câmera do navegador.');
-      return;
-    }
-    video.srcObject = stream;
-    await video.play();
-    recentCounts = [];
     $('live').hidden = false;
     $('settings').hidden = false;
     $('result').hidden = true;
     $('empty').hidden = true;
+    $('liveTotal').textContent = '–';
+    liveStatus('Abrindo a câmera…');
     $('live').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    requestAnimationFrame(liveLoop);
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      liveStatus('Este navegador não permite câmera ao vivo. Abra o link no Safari ou Chrome, ou use o botão "Foto".');
+      return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      video.srcObject = stream;
+      await video.play();
+    } catch (e) {
+      stopStream();
+      liveStatus(cameraErrorMessage(e));
+      return;
+    }
+    liveStatus('');
+    recentCounts = [];
+    liveLoop();
+  }
+
+  function stopStream() {
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+    video.srcObject = null;
   }
 
   function stopLive() {
-    if (!stream) return;
-    stream.getTracks().forEach((t) => t.stop());
-    stream = null;
-    video.srcObject = null;
+    stopStream();
     $('live').hidden = true;
     if ($('result').hidden) {
       $('settings').hidden = true;
@@ -165,21 +198,23 @@
     if (vw && vh) {
       const scale = Math.min(1, LIVE_MAX_SIDE / Math.max(vw, vh));
       const w = Math.round(vw * scale), h = Math.round(vh * scale);
-      if (liveCanvas.width !== w || liveCanvas.height !== h) {
-        liveCanvas.width = w;
-        liveCanvas.height = h;
+      if (work.width !== w || work.height !== h) {
+        work.width = overlay.width = w;
+        work.height = overlay.height = h;
       }
-      liveCtx.drawImage(video, 0, 0, w, h);
-      const frame = liveCtx.getImageData(0, 0, w, h);
+      workCtx.drawImage(video, 0, 0, w, h);
+      const frame = workCtx.getImageData(0, 0, w, h);
       const result = DominoDetector.detectPips(frame.data, w, h, detectorOptions());
-      drawPips(liveCtx, result.pips);
+      overlayCtx.clearRect(0, 0, w, h);
+      drawPips(overlayCtx, result.pips);
       // Mediana dos últimos quadros, para o número não ficar piscando.
       recentCounts.push(result.count);
-      if (recentCounts.length > 7) recentCounts.shift();
+      if (recentCounts.length > 5) recentCounts.shift();
       const sorted = recentCounts.slice().sort((a, b) => a - b);
       $('liveTotal').textContent = sorted[sorted.length >> 1];
     }
-    requestAnimationFrame(liveLoop);
+    // Pausa curta entre análises para o celular não esquentar nem travar.
+    setTimeout(() => requestAnimationFrame(liveLoop), 120);
   }
 
   // Congela o quadro atual em resolução maior e abre para conferência.
@@ -198,7 +233,7 @@
   $('liveStop').addEventListener('click', stopLive);
   $('liveFreeze').addEventListener('click', freezeLive);
   // Libera a câmera quando o app vai para segundo plano.
-  document.addEventListener('visibilitychange', () => { if (document.hidden) stopLive(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && stream) stopLive(); });
 
   // Toque na foto: remove o pip mais próximo, ou adiciona um novo.
   canvas.addEventListener('click', (ev) => {

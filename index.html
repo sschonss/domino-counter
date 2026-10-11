@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
   <header>
@@ -33,9 +33,11 @@
         <span id="liveTotal">0</span>
         <small>pontos (ao vivo)</small>
       </div>
-      <div class="canvas-wrap">
-        <canvas id="liveCanvas"></canvas>
+      <div class="canvas-wrap live-wrap">
+        <video id="liveVideo" autoplay muted playsinline></video>
+        <canvas id="liveOverlay"></canvas>
       </div>
+      <p id="liveStatus" class="status" hidden></p>
       <p class="hint">Mire nas peças de cima. Quando o número estabilizar, congele para conferir e corrigir.</p>
       <div class="row">
         <button id="liveFreeze" class="btn primary">📸 Congelar</button>
@@ -81,7 +83,7 @@
     </section>
   </main>
 
-  <script src="detector.js"></script>
-  <script src="app.js"></script>
+  <script src="detector.js?v=3"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
