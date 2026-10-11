@@ -2,15 +2,17 @@
   'use strict';
 
   const MAX_SIDE = 1200; // reduz fotos grandes para a detecção ficar rápida
-  const LIVE_MAX_SIDE = 960; // menor no ao vivo, para vários quadros por segundo
+  const LIVE_MAX_SIDE = 720; // menor no ao vivo, para vários quadros por segundo
   const STORAGE_KEY = 'domino-counter-history';
+  const TYPE_KEY = 'domino-counter-type';
 
   const $ = (id) => document.getElementById(id);
   const canvas = $('canvas');
   const ctx = canvas.getContext('2d');
 
   let image = null;     // ImageData da foto (já reduzida)
-  let pips = [];        // [{x, y, r}]
+  let pips = [];        // [{x, y, r, tile?, half?, manual?}]
+  let tiles = [];       // peças identificadas (linhas divisórias)
   let typicalR = 8;     // raio usado ao adicionar pips manualmente
 
   function loadHistory() {
@@ -55,17 +57,68 @@
     });
   }
 
+  // Valor de cada metade de cada peça, a partir dos pips atribuídos a ela.
+  function tileValues(tileList, pipList) {
+    const values = tileList.map(() => [0, 0]);
+    pipList.forEach((p) => { if (p.tile !== undefined) values[p.tile][p.half]++; });
+    return values;
+  }
+
+  // Etiqueta "6|3" sobre a linha divisória de cada peça.
+  function drawTiles(context, tileList, pipList) {
+    const values = tileValues(tileList, pipList);
+    const size = Math.max(12, Math.round(context.canvas.width / 38));
+    context.font = 'bold ' + size + 'px system-ui, sans-serif';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    tileList.forEach((t, i) => {
+      const text = values[i][0] + '|' + values[i][1];
+      const w = context.measureText(text).width + size * 0.6;
+      const h = size * 1.3;
+      context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      context.beginPath();
+      if (context.roundRect) context.roundRect(t.x - w / 2, t.y - h / 2, w, h, h / 2);
+      else context.rect(t.x - w / 2, t.y - h / 2, w, h);
+      context.fill();
+      context.fillStyle = '#fff';
+      context.fillText(text, t.x, t.y + 1);
+    });
+  }
+
+  function renderTileList() {
+    const list = $('tiles');
+    list.innerHTML = '';
+    const values = tileValues(tiles, pips);
+    values.forEach(([a, b]) => {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = '[' + a + '|' + b + '] ' + (a + b);
+      list.appendChild(chip);
+    });
+    const loose = pips.filter((p) => p.tile === undefined).length;
+    if (loose && tiles.length) {
+      const chip = document.createElement('span');
+      chip.className = 'chip muted';
+      chip.textContent = '+' + loose + ' fora de peça';
+      list.appendChild(chip);
+    }
+    list.hidden = tiles.length === 0;
+  }
+
   function draw() {
     if (!image) return;
     ctx.putImageData(image, 0, 0);
     drawPips(ctx, pips);
+    drawTiles(ctx, tiles, pips);
     $('total').textContent = pips.length;
+    renderTileList();
   }
 
   function detectorOptions() {
     return {
       sensitivity: parseFloat($('sensitivity').value),
       lightPips: $('lightPips').checked,
+      maxPerHalf: parseInt($('dominoType').value, 10),
     };
   }
 
@@ -83,6 +136,7 @@
     if (!image) return;
     const result = DominoDetector.detectPips(image.data, image.width, image.height, detectorOptions());
     pips = result.pips;
+    tiles = result.tiles;
     if (pips.length) {
       const radii = pips.map((p) => p.r).sort((a, b) => a - b);
       typicalR = radii[radii.length >> 1];
@@ -113,45 +167,78 @@
   }
 
   // --- Câmera ao vivo ---------------------------------------------------
+  //
+  // O <video> fica visível na página (o Safari do iPhone não atualiza quadros
+  // de um vídeo fora da página) e os círculos são desenhados num canvas
+  // transparente por cima dele. A detecção roda num canvas à parte, em
+  // resolução menor, sem travar a imagem da câmera.
 
-  const video = document.createElement('video');
-  video.setAttribute('playsinline', '');
-  video.muted = true;
-  const liveCanvas = $('liveCanvas');
-  const liveCtx = liveCanvas.getContext('2d', { willReadFrequently: true });
+  const video = $('liveVideo');
+  const overlay = $('liveOverlay');
+  const overlayCtx = overlay.getContext('2d');
+  const work = document.createElement('canvas');
+  const workCtx = work.getContext('2d', { willReadFrequently: true });
   let stream = null;
   let recentCounts = [];
 
+  function liveStatus(text) {
+    $('liveStatus').textContent = text || '';
+    $('liveStatus').hidden = !text;
+  }
+
+  function cameraErrorMessage(e) {
+    const name = e && e.name;
+    if (name === 'NotAllowedError' || name === 'SecurityError') {
+      return 'Sem permissão para usar a câmera. No iPhone: Ajustes → Safari → Câmera → Permitir. ' +
+        'Se abriu o link dentro de outro app, abra no Safari.';
+    }
+    if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+      return 'Nenhuma câmera encontrada neste aparelho.';
+    }
+    if (name === 'NotReadableError') {
+      return 'A câmera está em uso por outro app. Feche-o e tente de novo.';
+    }
+    return 'Não foi possível abrir a câmera (' + (name || e) + '). Use o botão "Foto".';
+  }
+
   async function startLive() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert('Este navegador não permite câmera ao vivo. Use o botão "Foto".');
-      return;
-    }
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false,
-      });
-    } catch (e) {
-      alert('Não foi possível abrir a câmera. Verifique a permissão de câmera do navegador.');
-      return;
-    }
-    video.srcObject = stream;
-    await video.play();
-    recentCounts = [];
     $('live').hidden = false;
     $('settings').hidden = false;
     $('result').hidden = true;
     $('empty').hidden = true;
+    $('liveTotal').textContent = '–';
+    liveStatus('Abrindo a câmera…');
     $('live').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    requestAnimationFrame(liveLoop);
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      liveStatus('Este navegador não permite câmera ao vivo. Abra o link no Safari ou Chrome, ou use o botão "Foto".');
+      return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      video.srcObject = stream;
+      await video.play();
+    } catch (e) {
+      stopStream();
+      liveStatus(cameraErrorMessage(e));
+      return;
+    }
+    liveStatus('');
+    recentCounts = [];
+    liveLoop();
+  }
+
+  function stopStream() {
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+    video.srcObject = null;
   }
 
   function stopLive() {
-    if (!stream) return;
-    stream.getTracks().forEach((t) => t.stop());
-    stream = null;
-    video.srcObject = null;
+    stopStream();
     $('live').hidden = true;
     if ($('result').hidden) {
       $('settings').hidden = true;
@@ -165,21 +252,24 @@
     if (vw && vh) {
       const scale = Math.min(1, LIVE_MAX_SIDE / Math.max(vw, vh));
       const w = Math.round(vw * scale), h = Math.round(vh * scale);
-      if (liveCanvas.width !== w || liveCanvas.height !== h) {
-        liveCanvas.width = w;
-        liveCanvas.height = h;
+      if (work.width !== w || work.height !== h) {
+        work.width = overlay.width = w;
+        work.height = overlay.height = h;
       }
-      liveCtx.drawImage(video, 0, 0, w, h);
-      const frame = liveCtx.getImageData(0, 0, w, h);
+      workCtx.drawImage(video, 0, 0, w, h);
+      const frame = workCtx.getImageData(0, 0, w, h);
       const result = DominoDetector.detectPips(frame.data, w, h, detectorOptions());
-      drawPips(liveCtx, result.pips);
+      overlayCtx.clearRect(0, 0, w, h);
+      drawPips(overlayCtx, result.pips);
+      drawTiles(overlayCtx, result.tiles, result.pips);
       // Mediana dos últimos quadros, para o número não ficar piscando.
       recentCounts.push(result.count);
-      if (recentCounts.length > 7) recentCounts.shift();
+      if (recentCounts.length > 5) recentCounts.shift();
       const sorted = recentCounts.slice().sort((a, b) => a - b);
       $('liveTotal').textContent = sorted[sorted.length >> 1];
     }
-    requestAnimationFrame(liveLoop);
+    // Pausa curta entre análises para o celular não esquentar nem travar.
+    setTimeout(() => requestAnimationFrame(liveLoop), 120);
   }
 
   // Congela o quadro atual em resolução maior e abre para conferência.
@@ -198,7 +288,7 @@
   $('liveStop').addEventListener('click', stopLive);
   $('liveFreeze').addEventListener('click', freezeLive);
   // Libera a câmera quando o app vai para segundo plano.
-  document.addEventListener('visibilitychange', () => { if (document.hidden) stopLive(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && stream) stopLive(); });
 
   // Toque na foto: remove o pip mais próximo, ou adiciona um novo.
   canvas.addEventListener('click', (ev) => {
@@ -220,13 +310,35 @@
     if (nearest >= 0 && nearestDist <= tolerance) {
       pips.splice(nearest, 1);
     } else {
-      pips.push({ x, y, r: typicalR, manual: true });
+      // Pip adicionado à mão entra na peça em cuja região ele cai.
+      const pip = { x, y, r: typicalR, manual: true };
+      let bestScore = 1;
+      tiles.forEach((t, i) => {
+        const { a, b } = DominoDetector.tileCoords(t, x, y);
+        const score = Math.max(Math.abs(a) / 0.75, Math.abs(b) / 1.6);
+        if (score < bestScore) {
+          bestScore = score;
+          pip.tile = i;
+          pip.half = b < 0 ? 0 : 1;
+        }
+      });
+      pips.push(pip);
     }
     draw();
   });
 
   $('camera').addEventListener('change', (e) => { loadFile(e.target.files[0]); e.target.value = ''; });
   $('gallery').addEventListener('change', (e) => { loadFile(e.target.files[0]); e.target.value = ''; });
+  try {
+    const savedType = localStorage.getItem(TYPE_KEY);
+    if (savedType) $('dominoType').value = savedType;
+  } catch (e) {
+    // sem armazenamento: fica o padrão
+  }
+  $('dominoType').addEventListener('change', () => {
+    try { localStorage.setItem(TYPE_KEY, $('dominoType').value); } catch (e) { /* ignora */ }
+    detect();
+  });
   $('sensitivity').addEventListener('change', detect);
   $('lightPips').addEventListener('change', detect);
 
