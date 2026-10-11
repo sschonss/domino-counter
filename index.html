@@ -7,8 +7,10 @@
   <title>Contador de Dominó</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Dominó">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
   <header>
@@ -51,6 +53,8 @@
         <small>pontos</small>
       </div>
 
+      <div id="tiles" class="tiles" hidden></div>
+
       <div class="canvas-wrap">
         <canvas id="canvas"></canvas>
       </div>
@@ -61,6 +65,14 @@
 
     <section id="settings" class="result" hidden>
       <div class="controls">
+        <label>
+          Tipo de dominó
+          <select id="dominoType">
+            <option value="6">Duplo-6 (até 6 pontos por lado)</option>
+            <option value="9">Duplo-9 (até 9 pontos por lado)</option>
+            <option value="12" selected>Duplo-12 (até 12 pontos por lado)</option>
+          </select>
+        </label>
         <label>
           Sensibilidade
           <input id="sensitivity" type="range" min="0" max="1" step="0.05" value="0.5">
@@ -83,7 +95,7 @@
     </section>
   </main>
 
-  <script src="detector.js?v=3"></script>
-  <script src="app.js?v=3"></script>
+  <script src="detector.js?v=4"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

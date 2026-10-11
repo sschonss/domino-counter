@@ -12,10 +12,13 @@ nenhum e não precisa de chave de API.
    **📸 Congelar** para conferir. (Ou use **📷 Foto** / **Galeria**.)
 2. Mire nas peças **de cima**, bem iluminadas e sem se sobreporem. Fundo liso e
    sem reflexos ajuda bastante.
-3. O total aparece em destaque e cada ponto detectado fica circulado em vermelho.
+3. O total aparece em destaque, cada ponto detectado fica circulado em vermelho
+   e cada peça identificada ganha uma etiqueta com o valor das metades (ex.: `6|3`).
 4. Errou algum? **Toque** num círculo para removê-lo, ou num ponto esquecido para
    adicioná-lo (fica circulado em amarelo).
-5. Se estiver detectando de menos/demais, ajuste a **Sensibilidade**. Para peças
+5. Escolha o **Tipo de dominó** (duplo-6, duplo-9 ou duplo-12): uma metade
+   nunca passa desse máximo. Se estiver detectando de menos/demais, ajuste a
+   **Sensibilidade**. Para peças
    escuras com pontos brancos, marque **Pontos claros em peça escura**.
 6. **Somar ao placar** guarda o resultado da rodada (fica salvo no aparelho).
 
@@ -33,8 +36,14 @@ nenhum e não precisa de chave de API.
 5. exige que o ponto seja bem mais escuro que a superfície logo ao redor;
 6. manchas alongadas (pontos encostados) são reprocessadas com limiar mais
    rígido até se separarem;
-7. mantém só manchas do tamanho típico dos pontos e que tenham vizinhos
-   parecidos (pontos andam em grupo), exceto um ponto isolado de alto contraste.
+7. mantém só manchas do tamanho típico dos pontos;
+8. acha as **linhas divisórias** (retas, finas, escuras, com a mesma superfície
+   dos dois lados) e monta cada peça a partir delas. A orientação de cada peça
+   é corrigida pela nuvem de pontos dela (fotos em perspectiva), e pontos
+   colados à peça entram nela;
+9. pontos fora de qualquer peça só contam se forem bem nítidos — isso elimina
+   manchas no fundo. Sem nenhuma peça identificada, vale a regra de que pontos
+   andam em grupo.
 
 ## Rodando localmente
 

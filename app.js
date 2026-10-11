@@ -4,13 +4,15 @@
   const MAX_SIDE = 1200; // reduz fotos grandes para a detecção ficar rápida
   const LIVE_MAX_SIDE = 720; // menor no ao vivo, para vários quadros por segundo
   const STORAGE_KEY = 'domino-counter-history';
+  const TYPE_KEY = 'domino-counter-type';
 
   const $ = (id) => document.getElementById(id);
   const canvas = $('canvas');
   const ctx = canvas.getContext('2d');
 
   let image = null;     // ImageData da foto (já reduzida)
-  let pips = [];        // [{x, y, r}]
+  let pips = [];        // [{x, y, r, tile?, half?, manual?}]
+  let tiles = [];       // peças identificadas (linhas divisórias)
   let typicalR = 8;     // raio usado ao adicionar pips manualmente
 
   function loadHistory() {
@@ -55,17 +57,68 @@
     });
   }
 
+  // Valor de cada metade de cada peça, a partir dos pips atribuídos a ela.
+  function tileValues(tileList, pipList) {
+    const values = tileList.map(() => [0, 0]);
+    pipList.forEach((p) => { if (p.tile !== undefined) values[p.tile][p.half]++; });
+    return values;
+  }
+
+  // Etiqueta "6|3" sobre a linha divisória de cada peça.
+  function drawTiles(context, tileList, pipList) {
+    const values = tileValues(tileList, pipList);
+    const size = Math.max(12, Math.round(context.canvas.width / 38));
+    context.font = 'bold ' + size + 'px system-ui, sans-serif';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    tileList.forEach((t, i) => {
+      const text = values[i][0] + '|' + values[i][1];
+      const w = context.measureText(text).width + size * 0.6;
+      const h = size * 1.3;
+      context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      context.beginPath();
+      if (context.roundRect) context.roundRect(t.x - w / 2, t.y - h / 2, w, h, h / 2);
+      else context.rect(t.x - w / 2, t.y - h / 2, w, h);
+      context.fill();
+      context.fillStyle = '#fff';
+      context.fillText(text, t.x, t.y + 1);
+    });
+  }
+
+  function renderTileList() {
+    const list = $('tiles');
+    list.innerHTML = '';
+    const values = tileValues(tiles, pips);
+    values.forEach(([a, b]) => {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = '[' + a + '|' + b + '] ' + (a + b);
+      list.appendChild(chip);
+    });
+    const loose = pips.filter((p) => p.tile === undefined).length;
+    if (loose && tiles.length) {
+      const chip = document.createElement('span');
+      chip.className = 'chip muted';
+      chip.textContent = '+' + loose + ' fora de peça';
+      list.appendChild(chip);
+    }
+    list.hidden = tiles.length === 0;
+  }
+
   function draw() {
     if (!image) return;
     ctx.putImageData(image, 0, 0);
     drawPips(ctx, pips);
+    drawTiles(ctx, tiles, pips);
     $('total').textContent = pips.length;
+    renderTileList();
   }
 
   function detectorOptions() {
     return {
       sensitivity: parseFloat($('sensitivity').value),
       lightPips: $('lightPips').checked,
+      maxPerHalf: parseInt($('dominoType').value, 10),
     };
   }
 
@@ -83,6 +136,7 @@
     if (!image) return;
     const result = DominoDetector.detectPips(image.data, image.width, image.height, detectorOptions());
     pips = result.pips;
+    tiles = result.tiles;
     if (pips.length) {
       const radii = pips.map((p) => p.r).sort((a, b) => a - b);
       typicalR = radii[radii.length >> 1];
@@ -207,6 +261,7 @@
       const result = DominoDetector.detectPips(frame.data, w, h, detectorOptions());
       overlayCtx.clearRect(0, 0, w, h);
       drawPips(overlayCtx, result.pips);
+      drawTiles(overlayCtx, result.tiles, result.pips);
       // Mediana dos últimos quadros, para o número não ficar piscando.
       recentCounts.push(result.count);
       if (recentCounts.length > 5) recentCounts.shift();
@@ -255,13 +310,35 @@
     if (nearest >= 0 && nearestDist <= tolerance) {
       pips.splice(nearest, 1);
     } else {
-      pips.push({ x, y, r: typicalR, manual: true });
+      // Pip adicionado à mão entra na peça em cuja região ele cai.
+      const pip = { x, y, r: typicalR, manual: true };
+      let bestScore = 1;
+      tiles.forEach((t, i) => {
+        const { a, b } = DominoDetector.tileCoords(t, x, y);
+        const score = Math.max(Math.abs(a) / 0.75, Math.abs(b) / 1.6);
+        if (score < bestScore) {
+          bestScore = score;
+          pip.tile = i;
+          pip.half = b < 0 ? 0 : 1;
+        }
+      });
+      pips.push(pip);
     }
     draw();
   });
 
   $('camera').addEventListener('change', (e) => { loadFile(e.target.files[0]); e.target.value = ''; });
   $('gallery').addEventListener('change', (e) => { loadFile(e.target.files[0]); e.target.value = ''; });
+  try {
+    const savedType = localStorage.getItem(TYPE_KEY);
+    if (savedType) $('dominoType').value = savedType;
+  } catch (e) {
+    // sem armazenamento: fica o padrão
+  }
+  $('dominoType').addEventListener('change', () => {
+    try { localStorage.setItem(TYPE_KEY, $('dominoType').value); } catch (e) { /* ignora */ }
+    detect();
+  });
   $('sensitivity').addEventListener('change', detect);
   $('lightPips').addEventListener('change', detect);
 

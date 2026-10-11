@@ -179,6 +179,34 @@ canvas {
   gap: 8px;
 }
 
+select {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+}
+
+.tiles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip.muted { color: var(--muted); }
+
 input[type="range"] { width: 100%; accent-color: var(--green); }
 input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--green); }
 
