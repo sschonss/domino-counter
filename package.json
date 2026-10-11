@@ -1,0 +1,10 @@
+{
+  "name": "domino-counter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tire uma foto das peças de dominó e veja quantos pontos você fez.",
+  "scripts": {
+    "start": "npx http-server -c-1 .",
+    "test": "node --test"
+  }
+}

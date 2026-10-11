@@ -1,1 +1,46 @@
-# domino-counter
+# Contador de Dominó
+
+Tire uma foto das suas peças de dominó e o app diz quantos pontos você fez.
+
+Roda 100% no navegador (inclusive no celular): nada é enviado para servidor
+nenhum e não precisa de chave de API.
+
+## Como usar
+
+1. Abra o app no celular e toque em **📷 Tirar foto** (ou **Galeria**).
+2. Fotografe as peças **de cima**, bem iluminadas e sem se sobreporem.
+3. O total aparece em destaque e cada ponto detectado fica circulado em vermelho.
+4. Errou algum? **Toque** num círculo para removê-lo, ou num ponto esquecido para
+   adicioná-lo (fica circulado em amarelo).
+5. Se estiver detectando de menos/demais, ajuste a **Sensibilidade**. Para peças
+   escuras com pontos brancos, marque **Pontos claros em peça escura**.
+6. **Somar ao placar** guarda o resultado da rodada (fica salvo no aparelho).
+
+## Como funciona
+
+`detector.js` faz a contagem com visão computacional simples, sem bibliotecas:
+
+1. converte a foto para tons de cinza;
+2. limiarização adaptativa (cada pixel comparado com a média da vizinhança),
+   o que lida bem com sombras e iluminação desigual;
+3. rotula as manchas (componentes conexos);
+4. mantém só as manchas redondas (proporção ≈ 1, preenchimento ≈ π/4), o que
+   descarta a linha divisória da peça, bordas e textura da mesa;
+5. mantém só as manchas com tamanho parecido com o tamanho típico dos pontos.
+
+## Rodando localmente
+
+```bash
+npm start   # serve em http://localhost:8080
+npm test    # testes do detector com imagens sintéticas
+```
+
+A câmera do celular exige HTTPS, então para usar no telefone publique no
+GitHub Pages (abaixo) ou outro host estático.
+
+## Publicando no GitHub Pages
+
+O workflow `.github/workflows/pages.yml` roda os testes e publica o app a cada
+push na `main`. Basta ativar uma vez em **Settings → Pages → Source: GitHub
+Actions**. O app ficará em `https://<usuario>.github.io/domino-counter/` e pode
+ser adicionado à tela inicial do celular.
