@@ -7,8 +7,11 @@ nenhum e não precisa de chave de API.
 
 ## Como usar
 
-1. Abra o app no celular e toque em **📷 Tirar foto** (ou **Galeria**).
-2. Fotografe as peças **de cima**, bem iluminadas e sem se sobreporem.
+1. Abra o app no celular e toque em **🎥 Câmera ao vivo**: o total vai sendo
+   atualizado enquanto você enquadra as peças. Quando estabilizar, toque em
+   **📸 Congelar** para conferir. (Ou use **📷 Foto** / **Galeria**.)
+2. Mire nas peças **de cima**, bem iluminadas e sem se sobreporem. Fundo liso e
+   sem reflexos ajuda bastante.
 3. O total aparece em destaque e cada ponto detectado fica circulado em vermelho.
 4. Errou algum? **Toque** num círculo para removê-lo, ou num ponto esquecido para
    adicioná-lo (fica circulado em amarelo).
@@ -20,13 +23,18 @@ nenhum e não precisa de chave de API.
 
 `detector.js` faz a contagem com visão computacional simples, sem bibliotecas:
 
-1. converte a foto para tons de cinza;
+1. converte a foto usando o menor canal de cor, para que pontos coloridos
+   (amarelo, rosa, verde…) contrastem com a peça branca tanto quanto os pretos;
 2. limiarização adaptativa (cada pixel comparado com a média da vizinhança),
    o que lida bem com sombras e iluminação desigual;
 3. rotula as manchas (componentes conexos);
-4. mantém só as manchas redondas (proporção ≈ 1, preenchimento ≈ π/4), o que
-   descarta a linha divisória da peça, bordas e textura da mesa;
-5. mantém só as manchas com tamanho parecido com o tamanho típico dos pontos.
+4. mantém só as manchas redondas ou elípticas (fotos de lado), o que descarta
+   a linha divisória da peça, bordas e textura da mesa;
+5. exige que o ponto seja bem mais escuro que a superfície logo ao redor;
+6. manchas alongadas (pontos encostados) são reprocessadas com limiar mais
+   rígido até se separarem;
+7. mantém só manchas do tamanho típico dos pontos e que tenham vizinhos
+   parecidos (pontos andam em grupo), exceto um ponto isolado de alto contraste.
 
 ## Rodando localmente
 

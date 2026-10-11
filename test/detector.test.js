@@ -132,3 +132,29 @@ test('pips coloridos (estilo dominó com cores)', () => {
   const img = scene(tiles, { pip: [30, 60, 200], noise: 15 });
   assert.strictEqual(detectPips(img.data, img.width, img.height).count, sum(tiles));
 });
+
+test('pips coloridos claros (amarelo, rosa) contam', () => {
+  const tiles = [[6, 3], [5, 6]];
+  const img = scene(tiles, { pip: [235, 200, 40], noise: 15 });
+  const pink = scene(tiles, { pip: [235, 120, 170], noise: 15 });
+  assert.strictEqual(detectPips(img.data, img.width, img.height).count, sum(tiles));
+  assert.strictEqual(detectPips(pink.data, pink.width, pink.height).count, sum(tiles));
+});
+
+test('manchas de pouco contraste no fundo não contam', () => {
+  const tiles = [[4, 2], [6, 1]];
+  const img = scene(tiles, { bg: [150, 150, 150] });
+  for (let i = 0; i < 12; i++) fillCircle(img, 60 + i * 60, 420, 6, [100, 100, 100]);
+  assert.strictEqual(detectPips(img.data, img.width, img.height).count, sum(tiles));
+});
+
+test('pips encostados (ligados por sombra) são separados', () => {
+  const img = makeImage(600, 400, [40, 110, 60]);
+  fillRect(img, 100, 100, 400, 200, [245, 245, 240]);
+  // Fileira de 3 pips ligados por uma faixa de sombra mais clara que eles.
+  fillRect(img, 150, 140, 120, 22, [150, 150, 150]);
+  for (const x of [165, 210, 255]) fillCircle(img, x, 151, 17, [20, 20, 20]);
+  // Outros pips soltos, para o detector aprender o tamanho típico.
+  for (const x of [330, 380, 430]) fillCircle(img, x, 250, 17, [20, 20, 20]);
+  assert.strictEqual(detectPips(img.data, img.width, img.height).count, 6);
+});
