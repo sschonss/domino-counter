@@ -40,7 +40,8 @@ GitHub Pages (abaixo) ou outro host estático.
 
 ## Publicando no GitHub Pages
 
-O workflow `.github/workflows/pages.yml` roda os testes e publica o app a cada
-push na `main`. Basta ativar uma vez em **Settings → Pages → Source: GitHub
-Actions**. O app ficará em `https://<usuario>.github.io/domino-counter/` e pode
-ser adicionado à tela inicial do celular.
+O workflow `.github/workflows/pages.yml` roda os testes e publica o app no
+branch `gh-pages` a cada push na `main`. Depois do primeiro deploy, em
+**Settings → Pages** escolha **Deploy from a branch → `gh-pages` / `(root)`**.
+O app fica em https://sschonss.github.io/domino-counter/ e pode ser adicionado
+à tela inicial do celular.
