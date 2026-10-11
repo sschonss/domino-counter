@@ -46,6 +46,14 @@ main {
 
 .actions {
   display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.actions .live-btn { grid-column: 1 / -1; }
+
+.row {
+  display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 10px;
 }
